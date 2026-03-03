@@ -11,8 +11,8 @@ defmodule Gitex.Git do
   def open("/"), do: nil
   def open(path) do
     gitdir = "#{path}/.git"
-    if File.exists?(gitdir), 
-      do: %Gitex.Git{home_dir: gitdir}, 
+    if File.exists?(gitdir),
+      do: %Gitex.Git{home_dir: gitdir},
       else: open(Path.dirname(path))
   end
 
@@ -50,7 +50,7 @@ defmodule Gitex.Git do
     import Bitwise
 
     def user(%{user: user}), do: user
-  
+
     def decode(_repo,hash,{type,bin}) when type in [:commit,:tag], do: parse_obj(bin,hash)
     def decode(_repo,_hash,{:tree,bin}), do: parse_tree(bin)
     def decode(_repo,_hash,{:blob,bin}), do: bin
@@ -64,7 +64,7 @@ defmodule Gitex.Git do
         {:ok,v}->[header,content] = v |> :zlib.uncompress |> String.split(<<0>>,parts: 2)
           [type,_] = String.split(header," ",parts: 2)
           {:"#{type}",content}
-        {:error,:enoent}-> 
+        {:error,:enoent}->
           (delta_offset=packed_offset(repo,hash)) && packed_read(repo,delta_offset)
       end
     end
@@ -77,8 +77,8 @@ defmodule Gitex.Git do
       if !File.exists?(path), do: File.write!(path,:zlib.compress(bin_to_hash))
       hash
     end
-  
-    def resolve_ref(repo,"HEAD"), do: 
+
+    def resolve_ref(repo,"HEAD"), do:
       raw_ref(repo,read!(repo,"HEAD") |> String.trim_trailing("\n"))
     def resolve_ref(repo,refpath), do:
       (nilify(read(repo,refpath)) || packed_resolve_ref(nilify(read(repo,"packed-refs")),refpath))
@@ -94,7 +94,7 @@ defmodule Gitex.Git do
       String.split(metadatas,"\n") |> Enum.map(fn metadata->
         [k,v] = String.split(metadata," ", parts: 2)
         {:"#{k}",parse_meta(:"#{k}",v)}
-      end) 
+      end)
       |> Enum.reduce(%{},fn {k,v},map->
          Map.update(map,k,v,& is_list(&1) && [v|&1] || [v,&1])
       end)
@@ -131,7 +131,7 @@ defmodule Gitex.Git do
     end
     defp encode_meta(k,v) when is_atom(v), do: encode_meta(k,"#{v}")
     defp encode_meta(k,v), do: [k,?\s,v,?\n]
-  
+
     defp parse_tree(""), do: []
     defp parse_tree(bin) do
       [modename,<<ref::binary-size(20)>> <> rest] = String.split(bin,<<0>>,parts: 2)
@@ -185,7 +185,7 @@ defmodule Gitex.Git do
               <<1::size(1),offset_index::size(31)>>->
                 hashtable_get(large_offsets,offset_index,8)
             end
-            {"#{String.slice(idx_path,0..-5)}.pack",offset}
+            {"#{String.slice(idx_path,0..-5//-1)}.pack",offset}
         end
       end)
     end
@@ -201,24 +201,24 @@ defmodule Gitex.Git do
     end
     defp packed_read(repo,{pack,offset}) do
       {:ok,^offset} = :file.position(pack,offset)
-      {:halted,{type,_len,_}} = Enumerable.reduce(IO.binstream(pack,1),{:cont,:first},fn 
+      {:halted,{type,_len,_}} = Enumerable.reduce(IO.binstream(pack,1),{:cont,:first},fn
         <<msb::size(1),type::size(3),size0::size(4)>>,:first->
           {msb==0 && :halt || :cont,{type,size0,4}}
         <<msb::size(1),size::size(7)>>,{type,acc,shift}->
           {msb==0 && :halt || :cont,{type,acc+(size<<<shift),shift+7}}
       end)
       case elem(@types,type) do
-        :ofs_delta-> {:halted,delta_offset} = Enumerable.reduce(IO.binstream(pack,1),{:cont,:first},fn 
+        :ofs_delta-> {:halted,delta_offset} = Enumerable.reduce(IO.binstream(pack,1),{:cont,:first},fn
             <<msb::size(1),size::size(7)>>,:first-> {msb==0 && :halt || :cont,size}
             <<msb::size(1),size::size(7)>>,acc->{msb==0 && :halt || :cont,((acc+1)<<<7)+size}
           end)
           delta = uncompress_stream(pack)
           packed_apply_delta(packed_read(repo,{pack,offset-delta_offset}),delta)
-        :ref_delta-> 
+        :ref_delta->
           <<hash::binary-size(20)>> = to_string(IO.binread(pack,20))
           delta = uncompress_stream(pack)
           packed_apply_delta(get_obj(repo,Base.encode16(hash,case: :lower)),delta)
-        type-> 
+        type->
           {type,uncompress_stream(pack)}
       end
     end
@@ -234,7 +234,7 @@ defmodule Gitex.Git do
       if msb==0, do: {res_acc,rest}, else: parse_delta_obj_len(rest,base_counter+1,res_acc)
     end
 
-    defp apply_delta_hunks(acc,_base,""), do: 
+    defp apply_delta_hunks(acc,_base,""), do:
       IO.iodata_to_binary(acc)
     defp apply_delta_hunks(acc,base,<<0::size(1),add_len::size(7),add::binary-size(add_len)>> <> delta), do:
       apply_delta_hunks([acc,add],base,delta)

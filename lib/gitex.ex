@@ -18,7 +18,7 @@ defmodule Gitex do
   @spec save_object(Gitex.Repo.gitobj,Gitex.Repo.t) :: Gitex.Repo.hash
   def save_object(elem,repo), do:
     Gitex.Repo.put_obj(repo,{typeof(elem),Gitex.Repo.encode(repo,elem)})
-     
+
   @doc "basically `get_hash |> object`"
   def get(ref,repo), do: object(get_hash(ref,repo),repo)
   def get(ref,repo,path), do: object(get_hash(ref,repo,path),repo)
@@ -39,9 +39,9 @@ defmodule Gitex do
   def get_hash(tree,repo,path) when is_list(tree), do: get_hash(nil,tree,repo,path)
   def get_hash(ref,repo,path), do: get_hash(get(ref,repo),repo,path)
 
-  def get_hash(hash,tree,repo,path), do: 
+  def get_hash(hash,tree,repo,path), do:
     get_hash_path(hash,tree,repo,path |> String.trim("/") |>  String.split("/"))
-   
+
   @doc """
   - from some reference or object, get a root tree to alter
   - save the missing or changed trees and blob from the root
@@ -52,7 +52,7 @@ defmodule Gitex do
   def put(%{object: ref},repo,path,elem), do: put(object(ref,repo),repo,path,elem)
   def put(tree,repo,path,elem) when is_list(tree), do:
     ({:tree,ref}=put_path(tree,repo,path |> String.trim("/") |>  String.split("/"),elem); ref)
-  def put(ref,repo,path,elem), do: 
+  def put(ref,repo,path,elem), do:
     put(get(ref,repo),repo,path,elem)
 
   @doc """
@@ -107,7 +107,7 @@ defmodule Gitex do
   end
 
   @doc """
-  take a commit stream (from `history/2`) and lazily 
+  take a commit stream (from `history/2`) and lazily
   add an index of the current branch to ease visualization and tree drawing
   """
   @spec align_history(Stream.t(Gitex.Repo.commit)) :: Stream.t({integer,Gitex.Repo.commit})
@@ -120,7 +120,7 @@ defmodule Gitex do
           Enum.reduce(tail,{nextlevel,levels},fn h,{nextlevel,levels}->
             levels[h] && {nextlevel,levels} || {nextlevel+1,Map.put(levels,h,nextlevel)}
           end)
-        []->acc 
+        []->acc
       end
       {[{level,commit}],acc}
     end)
@@ -150,12 +150,12 @@ defmodule Gitex do
 
   defp get_hash_path(hash,_tree,_repo,[]), do: hash
   defp get_hash_path(hash,_tree,_repo,[""]), do: hash
-  defp get_hash_path(nil,_tree,_repo,[]), do: nil 
+  defp get_hash_path(nil,_tree,_repo,[]), do: nil
   defp get_hash_path(_hash,tree,repo,[name|subpath]) when is_list(tree) do
     if (elem=Enum.find(tree,& &1.name == name)), do:
       get_hash_path(elem.ref,object(elem.ref,repo),repo,subpath)
   end
-  defp get_hash_path(_,_,_,_), do: nil 
+  defp get_hash_path(_,_,_,_), do: nil
 
   defp put_path(_,repo,[],elem), do: {typeof(elem),save_object(elem,repo)}
   defp put_path(tree,repo,[name|path],elem) do
