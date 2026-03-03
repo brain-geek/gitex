@@ -19,9 +19,12 @@ TODO:
 
 ## Usage example
 
-
 ```elixir
 r = Gitex.Git.open #Gitex.Git is the .git fs object storage
+
+commit_sha = Gitex.get_hash("main", r) #get the commit sha from the current main branch
+Gitex.get(commit_sha,r) #get commit metadata by sha
+
 Gitex.get("master",r) #get commit
 Gitex.get("myannotatedtag",r) #get tag object
 Gitex.get("master",r,"/path/to/dir")  #get tree object
@@ -30,12 +33,14 @@ Gitex.get("master",r,"/path/to/file") #get blob
 # get all commits from master to 1st January 2015
 Gitex.history("master",r) 
 |> Enum.take_while(& &1.committer.utc_time > {{2015,1,1},{0,0,0}})
+|> Enum.to_list()
 
 # get the stream of version history of a given file
 Gitex.history("master",r) 
 |> Stream.map(&Gitex.get_hash(&1,r,"/path/to/file")) 
 |> Stream.dedup
 |> Stream.map(&Gitex.object(&1,r))
+|> Enum.to_list()
 
 # commit history stream is powerful, play with it
 
@@ -53,7 +58,7 @@ A nice function `Gitex.align_history` allows you to lazily add an index number t
 history stream in order to construct a pretty visualizer very easily (d3.js for instance)
 
 ```elixir
-Gitex.history(:head,repo) |> Gitex.align_history
+Gitex.history(:head, r) |> Gitex.align_history |> Enum.to_list()
 ```
 
 ## The Gitex.Repo protocol
